@@ -29,10 +29,6 @@ float scaleFactor = 1.394124f;
 float offset = 0.0f;
 float heightOffset = 0.0f;
 
-static float heightLUT[LUT_SIZE];
-static bool lutready = false;
-static float minLUTAngle = 0.0f;
-static float maxLUTAngle = 90.0f;
 
 
 float interpolateHeight(float angle){
@@ -77,69 +73,6 @@ float interpolateHeight(float angle){
     return 0.0f;
 }
 
-void generateHeightLUT(float* knownAngles,float* knownHeights, int nPoints){
-    for(int i=0; i<nPoints-1; i++){        
-        for(int j=i+1; j<nPoints; j++){
-        if(knownAngles[i] > knownAngles[j]){
-            float ta = knownAngles[i];
-            knownAngles[i] = knownAngles[j];
-            knownAngles[j] = ta;
-            float th = knownHeights[i];
-            knownHeights[i] = knownHeights[j];
-            knownHeights[j] = th;
-        }
-    }
-}
-  minLUTAngle = knownAngles[0];
-  maxLUTAngle = knownAngles[nPoints -1];
-      for(int i=0; i<LUT_SIZE; i++){
-            float angle = minLUTAngle + (maxLUTAngle - minLUTAngle) * ((float)i / (LUT_SIZE -1));
-            //find interval
-            int idx = 0;
-            while (idx < nPoints-2 && angle > knownAngles[idx+1]) idx++;
-            float t = (angle - knownAngles[idx]) / (knownAngles[idx+1] - knownAngles[idx]);
-            float h = knownHeights[idx] + t * (knownHeights[idx+1] - knownHeights[idx]);
-            heightLUT[i] = h;
-            
-        }     
-    
-    lutready = true;    
-}
-
-float getHeightFromLUT(float angle){
-    if(!lutready) return 0.0f;
-    if(angle <= minLUTAngle) return heightLUT[0];
-    if(angle >= maxLUTAngle) return heightLUT[LUT_SIZE -1];
-    float idxF = (angle - minLUTAngle) / (maxLUTAngle - minLUTAngle) * (LUT_SIZE -1);
-    int idx = (int) idxF;
-    float frac = idxF - idx;
-    float h =  heightLUT[idx] + frac * (heightLUT[idx +1] - heightLUT[idx]);
-    return h;
-}
-
-void storeLUTToEEPROM(int baseAddr){
-    EEPROM.put(baseAddr,minLUTAngle);
-     baseAddr += sizeof(float);
-    EEPROM.put(baseAddr,maxLUTAngle);
-     baseAddr += sizeof(float);
-    for(int i=0; i<LUT_SIZE; i++){
-        EEPROM.put(baseAddr,heightLUT[i]);
-        baseAddr += sizeof(float);
-    }    
-}
-
-void loadLUTFromEEPROM(int baseAddr){
-    EEPROM.get(baseAddr,minLUTAngle);
-     baseAddr += sizeof(float);
-    EEPROM.get(baseAddr,maxLUTAngle);
-     baseAddr += sizeof(float);
-    for(int i=0; i<LUT_SIZE; i++){
-        EEPROM.get(baseAddr,heightLUT[i]);
-        baseAddr += sizeof(float);
-    }
-    lutready = true;
-}
-
 void initEncorder(){
     Wire.begin();
     Wire.setClock(400000);
@@ -177,16 +110,16 @@ float readEncoderAngle() {
 
     uint16_t RawAngle = ((uint16_t)highByte << 8) | lowByte;
     // uint16_t invertedAngle = 4095 - RawAngle;
-    return RawAngle * (360.0 / 4096.0);
+    return RawAngle ;
 }
 
-float readEncoderAngleOversampled(uint16_t samples = 1024) {
+float readEncoderAngleOversampled(uint16_t samples = 125) {
     double sum =0.0;
     for (uint16_t i = 0; i < samples; i++) {
         sum += readEncoderAngle();
         delayMicroseconds(50);
     }
-    return (float) (sum / samples);
+    return (float) (sum / samples) * 360.0f / 4096.0f;
 }
 
 void saveCurrentZeroPositionToEEPROM(){
@@ -212,6 +145,7 @@ void restoreZeroPositionFromEEPROM(){
 
 void setInitialAngleFromSensor(){
     initialAngle = readEncoderAngle();
+    initialAngle = initialAngle * 360.0f / 4096.0f;
     EEPROM.put(2,initialAngle);
     isReferenceSet = true;  
 }
@@ -219,20 +153,20 @@ void setInitialAngleFromSensor(){
 
 float updateHeight(){
     if(!isReferenceSet) return 0.0f;
-    currentAngle = readEncoderAngleOversampled(256);
+    currentAngle = readEncoderAngleOversampled();
     float relativeAngle = currentAngle - initialAngle;
     // float relativeRad = radians(relativeAngle);
-    float rawHeight =  getHeightFromLUT(currentAngle);
+    float rawHeight =  interpolateHeight(currentAngle);
     height = rawHeight - heightOffset;
     
-    /*
+    
     if(height < minHeight){
         height = minHeight;
     }
     if(height > maxHeight){
         height = maxHeight;
     }     
-*/
+
     return height;
 
 }

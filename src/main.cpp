@@ -11,6 +11,7 @@
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeMonoBoldOblique9pt7b.h>
 #include <EEPROM.h>
+#include <stdlib.h>
 
 // IO settings //
 #define GreenLed 16 //powerLed
@@ -58,7 +59,6 @@ void setup() {
     // I2C settings
     Wire.begin();
     Wire.setClock(400000);
-    loadLUTFromEEPROM(600);
 
     pinMode(ButtonPin,INPUT_PULLUP);
 
@@ -118,6 +118,10 @@ void calibrationMode(){
     const int NUM_POINTS = 5;
     float knownHeights[NUM_POINTS] = {2.5f,5.0f,16.0f,27.0f,38.0f};
     float measuredAngles[NUM_POINTS];
+    float minAngle[NUM_POINTS];
+    float maxAngle[NUM_POINTS];
+    float rangeAngle[NUM_POINTS];
+
 
     tft.setTextSize(1);
     tft.fillScreen(ST7735_BLACK);
@@ -127,85 +131,127 @@ void calibrationMode(){
     tft.setCursor(10,60);
     tft.println("PressBTN");
 
-    unsigned long pressStart = millis();
-    while (digitalRead(ButtonPin) == LOW)
-    {
-        if(millis() - pressStart > 5000){
-            break;
-        }    
-    }
+    while (digitalRead(ButtonPin) == LOW);
     while (digitalRead(ButtonPin) == HIGH);
 
-    for(int i=0; i<NUM_POINTS; i++){
+   
+    for (int i = 0; i < NUM_POINTS; i++) {
         tft.fillScreen(ST7735_BLACK);
         tft.setCursor(10,40);
         tft.print("set ");
         tft.print(knownHeights[i],1);
         tft.println("mm");
+        tft.setCursor(10,60);
+        tft.println("Press BTN to measure");
     
     while(digitalRead(ButtonPin)==LOW);
     while(digitalRead(ButtonPin)==HIGH);
 
-    measuredAngles[i] = readEncoderAngleOversampled(1024);
+    const int samples = 20000;
+    uint32_t sumRaw = 0;
+    uint32_t selectedCount = 0;
+    uint16_t minRaw = 0xFFFF;
+    uint16_t maxRaw = 0x0000;
+
+    // 1st pass: collect min/max and sum (for fallback average)
+    // show simple feedback to user while sampling
+    tft.fillScreen(ST7735_BLACK);
+    tft.setCursor(10,40);
+    tft.println("Searching...");
+
+    for (int j = 0; j < samples; j++) {
+        uint16_t raw = readEncoderAngle();
+        sumRaw += raw;
+        if (raw < minRaw) minRaw = raw;
+        if (raw > maxRaw) maxRaw = raw;
+        delayMicroseconds(50);
+    }
+
+    // compute min/max angles for display
+    minAngle[i] = (float)minRaw * 360.0f / 4096.0f;
+    maxAngle[i] = (float)maxRaw * 360.0f / 4096.0f;
+    rangeAngle[i] = maxAngle[i] - minAngle[i];
+
+    // If the raw range is small, build a histogram for that range and find the mode.
+    // This uses much less RAM when the spread is small (common in real device: ~1 raw step).
+    uint16_t range = (uint16_t)(maxRaw - minRaw) + 1;
+
+    if (range > 0 && range <= 3000) { // safety cap to avoid large allocations
+        // allocate histogram (counts need to hold up to `samples` -> use uint16_t)
+        uint16_t *hist = (uint16_t *)calloc(range, sizeof(uint16_t));
+        if (hist != NULL) {
+            // 2nd pass: fill histogram
+            // show simple feedback to user while sampling
+            tft.fillScreen(ST7735_BLACK);
+            tft.setCursor(10,40);
+            tft.println("Searching...");
+
+            for (int j = 0; j < samples; j++) {
+                uint16_t raw = readEncoderAngle();
+                hist[raw - minRaw]++;
+                delayMicroseconds(50);
+            }
+
+            // find mode index
+            uint16_t modeIdx = 0;
+            uint16_t maxCount = 0;
+            for (uint16_t k = 0; k < range; k++) {
+                if (hist[k] > maxCount) {
+                    maxCount = hist[k];
+                    modeIdx = k;
+                }
+            }
+
+            uint16_t modeRaw = (uint16_t)(minRaw + modeIdx);
+            measuredAngles[i] = (float)modeRaw * 360.0f / 4096.0f;
+            selectedCount = maxCount; // record how many times the selected raw value occurred
+
+            free(hist);
+        } else {
+            // allocation failed -> fallback to average
+            float avgAngle = ((float)sumRaw / samples) * 360.0f / 4096.0f;
+            measuredAngles[i] = avgAngle;
+        }
+    } else {
+        // range too big (unexpected) -> fallback to average
+        float avgAngle = ((float)sumRaw / samples) * 360.0f / 4096.0f;
+        measuredAngles[i] = avgAngle;
+    }
+
 
     tft.fillScreen(ST7735_BLACK);
     tft.setCursor(10,30);
     tft.print("Height: ");
     tft.print(knownHeights[i],3);
     tft.println(" mm");
+    
     tft.setCursor(10,50);
-
     tft.print("Angle: ");
     tft.print(measuredAngles[i],5);
     tft.println(" deg");
-    delay(3000);
-
-    }
-
     
-/*
-    if(i >= 2){
-        float sumX=0,sumY=0,sumXX=0,sumYY=0,sumXY=0;
+    tft.setCursor(10,70);
+    tft.print("Count: ");
+    tft.print(selectedCount);
+    tft.print("/");
+    tft.println(samples);
 
-        for(int j=0; j<i;j++){
-            sumX += measuredAngles[j];
-            sumY += knownHeights[j];
-            sumXX += measuredAngles[j]*measuredAngles[j];
-            sumYY += knownHeights[j]*knownHeights[j];
-            sumXY += measuredAngles[j]*knownHeights[j];
-        }
-    
-    float n = i;
-    float r_num = n * sumXY - sumX*sumY;
-    float r_den = sqrt((n*sumXX - sumX*sumX)*(n*sumYY - sumY*sumY));
-    float r = (fabs(r_den)<1e-6)? 0.0 : r_num/r_den;
 
-    tft.setCursor(10,60);
-    tft.print("r= ");
-    tft.println(r,3);
-
-    }
-
-    while (digitalRead(ButtonPin) == LOW);
     while (digitalRead(ButtonPin) == HIGH);
-    
-    measuredAngles[i] = readEncoderAngle();
-}
-    */
+    while (digitalRead(ButtonPin) == LOW);
+    }
 
+    
 for(int i=0; i<NUM_POINTS; i++){
     EEPROM.put(100 + i * sizeof(float), measuredAngles[i]);
     EEPROM.put(200 + i * sizeof(float), knownHeights[i]);
 }
 
-generateHeightLUT(measuredAngles,knownHeights,NUM_POINTS);
-storeLUTToEEPROM(600);
-
     tft.fillScreen(ST7735_BLACK);
     tft.setCursor(10,40);
     tft.println("complete");
 
-    delay(10000);
+    delay(5000);
 
     resetFunc();    
     
@@ -220,6 +266,7 @@ void loop() {
         if(!buttonPressed){
             buttonPressed = true;
             float currentAngle = readEncoderAngle();
+            currentAngle = currentAngle * 360.0f / 4096.0f;
             float measuredHeight = interpolateHeight(currentAngle);
 
             const float referenceHeight = 5.0f;
