@@ -59,6 +59,9 @@ void setup() {
     // I2C settings
     Wire.begin();
     Wire.setClock(400000);
+    restoreZeroPositionFromEEPROM();
+    EEPROM.get(2,initialAngle);
+    EEPROM.get(300,heightOffset);
 
     pinMode(ButtonPin,INPUT_PULLUP);
 
