@@ -6,6 +6,11 @@
 
 #define BattPin A11
 int batteryThreshold = 290;
+static bool forceRedraw = true;
+
+void resetBatteryDisplay(){
+    forceRedraw = true;
+}
 
 int getBatteryRaw(){
     return analogRead(BattPin);
@@ -16,11 +21,12 @@ void updateBatteryStatus(Adafruit_ST7735 &tft){
     bool batteryGood = (BattValue > batteryThreshold);
     static bool prevBatteryGood =!batteryGood; 
 
-    if(batteryGood != prevBatteryGood){
+    if( forceRedraw || batteryGood != prevBatteryGood){
         uint16_t frameColor = batteryGood ? 0x2d13 : 0xe003;        
         tft.drawRoundRect(30, 30, 100, 70, 8, frameColor); 
         tft.fillRoundRect(30, 30, 100, 23, 8, frameColor); 
         prevBatteryGood = batteryGood;       
+        forceRedraw = false;
     }
 
     tft.setCursor(35,47);

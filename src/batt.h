@@ -5,6 +5,7 @@
 #include <Adafruit_ST7735.h>
 
 int getBatteryRaw();
+void resetBatteryDisplay();
 void updateBatteryStatus(Adafruit_ST7735 & tft);
 
 #endif

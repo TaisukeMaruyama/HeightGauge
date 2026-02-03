@@ -41,12 +41,15 @@ uint16_t maxAngle = 0x0400; //maxAngle 90deg
 
 // power LED variable //
 bool GreenLedState = false;
+bool userCalFirstMeasurement = true;
+bool userCalScreenDrawn = false;
 
 // prototype //
 Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 
 enum CalibrationState {
     CAL_IDLE,
+    CAL_USER_INIT,
     CAL_WAIT_RECHECK
 };
 CalibrationState calState = CAL_IDLE;
@@ -58,7 +61,7 @@ void setMaxAngle(uint16_t maxAngle);
 
 
 // carib //
-float calibJigLow = 5.0f;
+float calibJig = 5.0f;
 float calibJigHeigh = 30.3f;
 float newScale = 1.0f;
 
@@ -142,17 +145,6 @@ void setup() {
 
 void(*resetFunc)(void) = 0;
 
-void showMassage(const char* line1, const char* line2){
-    tft.fillScreen(ST7735_BLACK);
-    tft.setTextColor(ST7735_WHITE);
-    tft.setFont(&FreeMonoBoldOblique9pt7b);
-    tft.setCursor(50,30);
-    tft.println(line1);
-
-    tft.setFont(&FreeMonoBoldOblique9pt7b);
-    tft.setCursor(50,50);
-    tft.println(line2);    
-}
 
 void calibrationMode(){
 
@@ -322,71 +314,126 @@ for(int i=0; i<NUM_POINTS; i++){
     
 }
 
+void redrawNoumalUI(){
+    tft.fillScreen(ST7735_BLACK);
+    tft.setFont(NULL);
+    tft.setTextSize(1);
+        resetBatteryDisplay();
+    updateBatteryStatus(tft);
+    float height = updateHeight();
+    updateHeightDisplay(tft,height,previousHeight);
+}
+
+void enterUserCalibration(){
+    calState = CAL_USER_INIT;
+    userCalFirstMeasurement = true;
+    userCalScreenDrawn = false;
+    tft.fillScreen(ST7735_BLACK);
+    tft.setTextColor(ST7735_WHITE);
+    tft.setFont(NULL);
+    tft.setTextSize(1);
+    tft.setCursor(20,40);
+    tft.println("SET 5mm JIG");
+    tft.setCursor(20,60);
+    tft.println("PRESS BTN");
+
+}
+void handleUserCalibration(bool buttonReleased,uint32_t pressTime){
+    // Placeholder for user calibration handling if needed
+           if(!(calState == CAL_USER_INIT || calState == CAL_WAIT_RECHECK)){
+            return;
+           }
+
+           if(!userCalScreenDrawn){
+           userCalScreenDrawn = true;
+           }
+
+
+           if(!buttonReleased || pressTime >= 3000){
+               return;
+           }
+
+           float angle = readEncoderAngle() * 360.0f / 4096.0f;
+              float measuredHeight = interpolateHeight(angle);
+              if(userCalFirstMeasurement){
+                heightOffset = measuredHeight - calibJig;
+                EEPROM.put(300,heightOffset);
+    
+                setInitialAngleFromSensor();
+    
+                tft.fillScreen(ST7735_BLACK);
+                tft.setTextColor(ST7735_WHITE);
+                tft.setCursor(20,40);
+                tft.println("SET 5mm JIG");
+                tft.setCursor(20,60);
+                tft.println("AGAIN");
+
+                delay(2000);
+                userCalFirstMeasurement = false;
+                   return;
+
+          }
+            if(measuredHeight >= 4.95 && measuredHeight <= 5.05){
+                 tft.fillScreen(ST7735_BLACK);
+                 tft.setTextColor(ST7735_WHITE);
+                 tft.setTextSize(1);
+                 tft.setCursor(20,40);
+                 tft.println("CALIBRATION");
+                 tft.setCursor(20,60);
+                 tft.println("COMPLETE");
+                 delay(2000);
+                 calState = CAL_IDLE;
+                 redrawNoumalUI();
+             }else{
+                 tft.fillScreen(ST7735_BLACK);
+                 tft.setTextColor(ST7735_WHITE);
+                 tft.setTextSize(1);
+                 tft.setCursor(20,40);
+                 tft.println("HEIGHT ERROR");
+                 tft.setCursor(20,60);
+                 tft.println("TRY AGAIN");
+                 delay(2000);
+                 calState = CAL_WAIT_RECHECK;
+                 userCalFirstMeasurement = true;
+                 userCalScreenDrawn = false;
+             }
+    }
+
 void loop() {
 
-    static unsigned long buttonPuressStart = 0;
-    static bool buttonPressed = false;
-    static bool longPressHandled = false;
+    static bool buttonPrev = HIGH;
+    static uint32_t pressStart = 0;
+    static uint32_t pressTime = 0;
 
-    if(digitalRead(ButtonPin) == LOW){
-     if(!buttonPressed){
-        buttonPressed = true;
-        longPressHandled = false;
-        buttonPuressStart = millis();
-     }
-   
+    bool buttonNow = digitalRead(ButtonPin);
+    bool buttonRelesased = false;
 
-    if(!longPressHandled && (millis() - buttonPuressStart >= 3000)){
-            float currentAngle = readEncoderAngle();
-            currentAngle = currentAngle * 360.0f / 4096.0f;
-            float measuredHeight = interpolateHeight(currentAngle);
-
-            const float referenceHeight = 5.0f;
-
-            heightOffset = measuredHeight - referenceHeight;
-            EEPROM.put(300,heightOffset);
-
-            setInitialAngleFromSensor();
-
-            showMassage("USER CALIBRATION","SET 5mm JIG");
-            delay(2000);
-
-            showMassage("SET 5mm JIG","Again");
-
-            calState = CAL_WAIT_RECHECK;
-            longPressHandled = true; 
-    }  
-    }else{
-        if(buttonPressed){
-            if(calState == CAL_WAIT_RECHECK){
-                float currentAngle = readEncoderAngle();
-                currentAngle = currentAngle * 360.0f / 4096.0f;
-                float measuredHeight = interpolateHeight(currentAngle);
-
-                if(measuredHeight >= 4.95f && measuredHeight <= 5.04f){
-                    showMassage("CALIBRATION","SUCCESS");
-                    delay(2000);
-                    calState = CAL_IDLE;
-                }else{
-                    showMassage("SET 5mm JIG","");
-                    calState = CAL_WAIT_RECHECK;
-                    
-                }
-
-            }
+    if(buttonPrev == HIGH && buttonNow == LOW){
+        pressStart = millis();
+    }
+    if(buttonPrev == LOW && buttonNow == HIGH){
+        pressTime = millis() - pressStart;
+        buttonRelesased = true;
+        if(pressTime >= 3000){
+            enterUserCalibration();
         }
-            buttonPressed = false;
-            // longPressHandled = false;
-    }    
+    }
+    buttonPrev = buttonNow;
+    handleUserCalibration(buttonRelesased,pressTime);
+
+    if(calState != CAL_IDLE){
+        delay(50);
+        return;
+    }
+
     
-
-
     // battery survey
     updateBatteryStatus(tft);
 
     //height calucurate        
     float height = updateHeight(); 
     updateHeightDisplay(tft,height,previousHeight);
+    
 
     // sleep control
     updateSleepStatus(height, TFT_POWER_PIN);
