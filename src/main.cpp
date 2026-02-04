@@ -316,9 +316,9 @@ for(int i=0; i<NUM_POINTS; i++){
 
 void redrawNoumalUI(){
     tft.fillScreen(ST7735_BLACK);
-    tft.setFont(NULL);
+    tft.setFont(&FreeSans9pt7b);
     tft.setTextSize(1);
-        resetBatteryDisplay();
+    resetBatteryDisplay();
     updateBatteryStatus(tft);
     float height = updateHeight();
     updateHeightDisplay(tft,height,previousHeight);
