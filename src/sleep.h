@@ -3,6 +3,8 @@
 
 void updateSleepStatus(float currentHeight, int tftPowerPin);
 void handleSleepLED(int ledPin);
+void blinkLed(int ledPin);
+void ledOff();
 bool isSleeping();
 
 #endif

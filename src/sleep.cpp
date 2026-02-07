@@ -27,13 +27,24 @@ void updateSleepStatus(float currentHeight, int tftPowerPin){
 
 }
 
+void blinkLed(int ledPin){
+      static unsigned long lastToggle = 0;
+      static bool ledState = false;
+
+      if(millis() - lastToggle >= 500){
+          lastToggle = millis();
+          ledState = !ledState;
+          digitalWrite(ledPin, ledState ? HIGH : LOW);
+      }
+}
+
 void handleSleepLED(int ledPin){
         if(sleepMode == 1){
                                              
                 if(fadeDirectionUp){
                     fadeValue += fadeAmount;
-                    if(fadeValue >= 180){
-                        fadeValue = 180;
+                    if(fadeValue >= 150){
+                        fadeValue = 150;
                         fadeDirectionUp = false;
                     }
                 }else{
@@ -44,10 +55,7 @@ void handleSleepLED(int ledPin){
                     }
                 }
                 analogWrite(ledPin,fadeValue);
-            }else{
-                analogWrite(ledPin , 180);            
-            }   
-
+            } 
 }
 
 bool isSleeping(){

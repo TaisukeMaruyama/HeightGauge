@@ -43,6 +43,7 @@ uint16_t maxAngle = 0x0400; //maxAngle 90deg
 bool GreenLedState = false;
 bool userCalFirstMeasurement = true;
 bool userCalScreenDrawn = false;
+bool useCalibrationMode = false;
 
 // prototype //
 Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
@@ -121,6 +122,7 @@ void setup() {
 
     pinMode(TFT_POWER_PIN,OUTPUT);
     digitalWrite(TFT_POWER_PIN,HIGH);
+    pinMode(GreenLed,OUTPUT);
 
     
     tft.initR(INITR_GREENTAB); //for greentab setting
@@ -322,9 +324,11 @@ void redrawNoumalUI(){
     updateBatteryStatus(tft);
     float height = updateHeight();
     updateHeightDisplay(tft,height,previousHeight);
+    useCalibrationMode = false;
 }
 
 void enterUserCalibration(){
+    useCalibrationMode = true;
     calState = CAL_USER_INIT;
     userCalFirstMeasurement = true;
     userCalScreenDrawn = false;
@@ -421,6 +425,16 @@ void loop() {
     buttonPrev = buttonNow;
     handleUserCalibration(buttonRelesased,pressTime);
 
+        if(isSleeping()){
+        handleSleepLED(GreenLed);
+    }else if(useCalibrationMode == true){
+        blinkLed(GreenLed);
+    }else{
+        analogWrite(GreenLed,150);
+    }
+
+
+
     if(calState != CAL_IDLE){
         delay(50);
         return;
@@ -437,8 +451,8 @@ void loop() {
 
     // sleep control
     updateSleepStatus(height, TFT_POWER_PIN);
-    handleSleepLED(GreenLed);        
 
+    
     delay(50);
 }
 
