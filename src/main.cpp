@@ -444,19 +444,23 @@ void loop() {
     static bool buttonPrev = HIGH;
     static uint32_t pressStart = 0;
     static uint32_t pressTime = 0;
+    static bool longPressHandled = false;
 
     bool buttonNow = digitalRead(ButtonPin);
     bool buttonRelesased = false;
 
     if(buttonPrev == HIGH && buttonNow == LOW){
         pressStart = millis();
+        longPressHandled = false;
+    }
+    if(buttonPrev == LOW && !longPressHandled && millis() - pressStart >= 3000){
+            enterUserCalibration();
+            longPressHandled = true;        
     }
     if(buttonPrev == LOW && buttonNow == HIGH){
         pressTime = millis() - pressStart;
         buttonRelesased = true;
-        if(pressTime >= 3000){
-            enterUserCalibration();
-        }
+        longPressHandled = false;
     }
     buttonPrev = buttonNow;
     handleUserCalibration(buttonRelesased,pressTime);
