@@ -25,10 +25,10 @@ void updateBatteryStatus(Adafruit_ST7735 &tft){
         uint16_t frameColor = batteryGood ? 0x2d13 : 0xe003;        
         tft.drawRoundRect(30, 30, 100, 70, 8, frameColor); 
         tft.fillRoundRect(30, 30, 100, 23, 8, frameColor); 
-            tft.setCursor(35,47);
-    tft.setFont(&FreeSans9pt7b);
-    tft.setTextColor(0xf7be);
-    tft.println("RideHeight");
+        tft.setCursor(35,47);
+        tft.setFont(&FreeSans9pt7b);
+        tft.setTextColor(0xf7be);
+        tft.println("RideHeight");
 
         prevBatteryGood = batteryGood;       
         forceRedraw = false;

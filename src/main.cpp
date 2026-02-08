@@ -279,17 +279,17 @@ void calibrationMode(){
 
 
     tft.fillScreen(ST7735_BLACK);
-    tft.setCursor(30,30);
+    tft.setCursor(25,30);
     tft.print("Height: ");
     tft.print(knownHeights[i],3);
     tft.println(" mm");
     
-    tft.setCursor(30,50);
+    tft.setCursor(25,50);
     tft.print("Angle: ");
     tft.print(measuredAngles[i],5);
     tft.println(" deg");
     
-    tft.setCursor(30,70);
+    tft.setCursor(25,70);
     tft.print("Count: ");
     tft.print(selectedCount);
     tft.print("/");
@@ -336,11 +336,20 @@ void enterUserCalibration(){
     tft.setTextColor(ST7735_WHITE);
     tft.setFont(NULL);
     tft.setTextSize(1);
-    tft.setCursor(20,40);
-    tft.println("SET 5mm JIG");
-    tft.setCursor(20,60);
-    tft.println("PRESS BTN");
+    tft.drawRoundRect(30,30,100,70,8,0x2d13);
+    tft.fillRoundRect(30,30,100,23,8,0x2d13);
+    tft.setFont(&FreeSans9pt7b);
+    tft.setCursor(35,47);
+    tft.setTextColor(0xf7be);
+    tft.println("CalibMode");
 
+    tft.setFont(NULL);
+    tft.setTextSize(1);
+    tft.setTextColor(ST7735_WHITE);
+    tft.setCursor(50,60);
+    tft.println("SET 5mm JIG");
+    tft.setCursor(55,80);
+    tft.println("PRESS BTN");
 }
 void handleUserCalibration(bool buttonReleased,uint32_t pressTime){
     // Placeholder for user calibration handling if needed
@@ -364,12 +373,22 @@ void handleUserCalibration(bool buttonReleased,uint32_t pressTime){
                 EEPROM.put(300,heightOffset);
     
                 setInitialAngleFromSensor();
-    
+                
                 tft.fillScreen(ST7735_BLACK);
+                tft.setTextColor(ST7735_WHITE);                
+                tft.drawRoundRect(30,30,100,70,8,0x2d13);
+                tft.fillRoundRect(30,30,100,23,8,0x2d13);
+                tft.setFont(&FreeSans9pt7b);
+                tft.setTextColor(0xf7be);
+                tft.setCursor(35,47);
+                tft.println("CalibMode");
+
+                tft.setFont(NULL);
+                tft.setTextSize(1);
                 tft.setTextColor(ST7735_WHITE);
-                tft.setCursor(20,40);
+                tft.setCursor(50,60);
                 tft.println("SET 5mm JIG");
-                tft.setCursor(20,60);
+                tft.setCursor(60,80);
                 tft.println("AGAIN");
 
                 delay(2000);
@@ -380,22 +399,39 @@ void handleUserCalibration(bool buttonReleased,uint32_t pressTime){
             if(measuredHeight >= 4.95 && measuredHeight <= 5.05){
                  tft.fillScreen(ST7735_BLACK);
                  tft.setTextColor(ST7735_WHITE);
+                 tft.drawRoundRect(30,30,100,70,8,0x2d13);
+                 tft.fillRoundRect(30,30,100,23,8,0x2d13);
+                 tft.setFont(&FreeSans9pt7b);
+                 tft.setTextColor(0xf7be);
+                 tft.setCursor(35,47);
+                 tft.println("CalibMode");
+
+                 tft.setFont(NULL);
                  tft.setTextSize(1);
-                 tft.setCursor(20,40);
+                 tft.setCursor(40,60);
                  tft.println("CALIBRATION");
-                 tft.setCursor(20,60);
+                 tft.setCursor(40,80);
                  tft.println("COMPLETE");
+
                  delay(2000);
                  calState = CAL_IDLE;
                  redrawNoumalUI();
              }else{
                  tft.fillScreen(ST7735_BLACK);
                  tft.setTextColor(ST7735_WHITE);
+                 tft.drawRoundRect(30,30,100,70,8,0x2d13);
+                 tft.fillRoundRect(30,30,100,23,8,0x2d13);
+                 tft.setFont(&FreeSans9pt7b);
+                 tft.setTextColor(0xf7be);
+                 tft.setCursor(35,47);
+                 tft.println("CalibMode");
+                 tft.setFont(NULL);
                  tft.setTextSize(1);
-                 tft.setCursor(20,40);
+                 tft.setCursor(40,60);
                  tft.println("HEIGHT ERROR");
-                 tft.setCursor(20,60);
+                 tft.setCursor(40,80);
                  tft.println("TRY AGAIN");
+                 
                  delay(2000);
                  calState = CAL_WAIT_RECHECK;
                  userCalFirstMeasurement = true;
