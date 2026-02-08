@@ -362,7 +362,7 @@ void handleUserCalibration(bool buttonReleased,uint32_t pressTime){
            }
 
 
-           if(!buttonReleased || pressTime >= 3000){
+           if(!buttonReleased){
                return;
            }
 
