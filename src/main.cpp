@@ -138,6 +138,12 @@ void setup() {
     tft.println("KO");
     tft.setCursor(65,70);
     tft.println("PROPO");
+    tft.setFont(NULL);
+    tft.setTextSize(1);
+    tft.setCursor(40,80);
+    tft.println("version 1.0");
+    tft.setFont(&FreeMonoBoldOblique9pt7b);
+
 
     delay(3000);
     tft.fillRect(33,60,95,30,ST7735_BLACK);    
@@ -386,10 +392,15 @@ void handleUserCalibration(bool buttonReleased,uint32_t pressTime){
                 tft.setFont(NULL);
                 tft.setTextSize(1);
                 tft.setTextColor(ST7735_WHITE);
-                tft.setCursor(50,60);
+                tft.setCursor(50,55);
                 tft.println("SET 5mm JIG");
-                tft.setCursor(60,80);
+                tft.setCursor(70,70);
                 tft.println("AGAIN");
+                tft.setCursor(40,85);
+                tft.print("Meas: ");
+                tft.print(measuredHeight,2);
+                tft.println(" mm");
+
 
                 delay(2000);
                 userCalFirstMeasurement = false;
@@ -427,10 +438,16 @@ void handleUserCalibration(bool buttonReleased,uint32_t pressTime){
                  tft.println("CalibMode");
                  tft.setFont(NULL);
                  tft.setTextSize(1);
-                 tft.setCursor(40,60);
+                 tft.setCursor(40,55);
                  tft.println("HEIGHT ERROR");
-                 tft.setCursor(40,80);
+                 tft.setCursor(40,70);
                  tft.println("TRY AGAIN");
+                 tft.setCursor(40,85);
+                 tft.print("Meas: ");
+                 tft.print(measuredHeight,2);
+                 tft.println(" mm");
+
+
                  
                  delay(2000);
                  calState = CAL_WAIT_RECHECK;
