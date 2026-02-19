@@ -44,6 +44,8 @@ bool GreenLedState = false;
 bool userCalFirstMeasurement = true;
 bool userCalScreenDrawn = false;
 bool useCalibrationMode = false;
+uint8_t calCount = 0;
+const int calCountData = 230;
 
 // prototype //
 Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
@@ -72,6 +74,11 @@ void setup() {
     Wire.begin();
     Wire.setClock(400000);
     restoreZeroPositionFromEEPROM();
+    EEPROM.get(calCountData,calCount);     
+    if(calCount > 100){
+        calCount = 0; // sanity check to prevent overflow issues
+        EEPROM.put(calCountData,calCount);
+    }
     EEPROM.get(2,initialAngle);
     EEPROM.get(300,heightOffset);
 
@@ -82,17 +89,28 @@ void setup() {
     // calibration mode config
 
     bool enterCalibration = false;
-    uint32_t pressStart = millis();
+
+    uint32_t requiredPressTime;
+    
+    if(calCount == 0){
+        requiredPressTime = 3000; // 3 seconds for first calibration
+    }else{
+        requiredPressTime = 30000; // 10 seconds for subsequent calibrations to avoid accidental entry
+    }
 
     if(digitalRead(ButtonPin)==LOW){
-        while(millis() - pressStart < 3000){
+        uint32_t pressStart = millis();
+
+        while(millis() - pressStart < requiredPressTime){
             if(digitalRead(ButtonPin)==HIGH){
                 break;
             }
             delay(10);
         }
-    if(digitalRead(ButtonPin)==LOW && millis() - pressStart >=3000){
+    if(digitalRead(ButtonPin)==LOW && millis() - pressStart >=requiredPressTime){
         enterCalibration = true;
+        calCount++;
+        EEPROM.put(calCountData,calCount);
        }
     }
 
@@ -138,11 +156,6 @@ void setup() {
     tft.println("KO");
     tft.setCursor(65,70);
     tft.println("PROPO");
-    tft.setFont(NULL);
-    tft.setTextSize(1);
-    tft.setCursor(40,80);
-    tft.println("version 1.0");
-    tft.setFont(&FreeMonoBoldOblique9pt7b);
 
 
     delay(3000);
@@ -171,14 +184,16 @@ void calibrationMode(){
 
        tft.setTextSize(1);
        tft.fillScreen(ST7735_BLACK);
-       tft.setCursor(40,40);
+       tft.setCursor(40,30);
        tft.setTextColor(ST7735_WHITE);
        tft.println("CalibrationMode");
-       tft.setCursor(40,60);
+       tft.setCursor(40,50);
        tft.println("wait ");
-       tft.setCursor(40,80);
+       tft.setCursor(40,70);
        tft.print(sec);
        tft.println(" sec");
+       tft.setCursor(40,90);
+       tft.print(calCount);
        
        while (millis() - start < 1000){
         readEncoderAngle();
@@ -192,6 +207,8 @@ void calibrationMode(){
     tft.println("CalibrationMode");
     tft.setCursor(40,60);
     tft.println("Press BTN");
+    tft.setCursor(40,80);
+    tft.println("version 1.10");
 
     while (digitalRead(ButtonPin) == LOW);
     while (digitalRead(ButtonPin) == HIGH);
@@ -307,10 +324,14 @@ void calibrationMode(){
     }
 
     
-for(int i=0; i<NUM_POINTS; i++){
-    EEPROM.put(100 + i * sizeof(float), measuredAngles[i]);
-    EEPROM.put(200 + i * sizeof(float), knownHeights[i]);
-}
+   for(int i=0; i<NUM_POINTS; i++){
+      EEPROM.put(100 + i * sizeof(float), measuredAngles[i]);
+      EEPROM.put(200 + i * sizeof(float), knownHeights[i]);
+    }
+
+
+    
+
 
     tft.fillScreen(ST7735_BLACK);
     tft.setCursor(40,40);
@@ -419,10 +440,14 @@ void handleUserCalibration(bool buttonReleased,uint32_t pressTime){
 
                  tft.setFont(NULL);
                  tft.setTextSize(1);
-                 tft.setCursor(40,60);
+                 tft.setCursor(40,55);
                  tft.println("CALIBRATION");
-                 tft.setCursor(40,80);
+                 tft.setCursor(40,75);
                  tft.println("COMPLETE");
+                    tft.setCursor(40,85);
+                    tft.print("Meas: ");
+                    tft.print(measuredHeight,2);
+                    tft.println(" mm");
 
                  delay(2000);
                  calState = CAL_IDLE;
