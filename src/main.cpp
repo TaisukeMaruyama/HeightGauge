@@ -208,7 +208,7 @@ void calibrationMode(){
     tft.setCursor(40,60);
     tft.println("Press BTN");
     tft.setCursor(40,80);
-    tft.println("version 1.10");
+    tft.println("version 1.11");
 
     while (digitalRead(ButtonPin) == LOW);
     while (digitalRead(ButtonPin) == HIGH);
