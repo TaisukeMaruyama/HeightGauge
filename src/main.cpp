@@ -442,7 +442,7 @@ void handleUserCalibration(bool buttonReleased,uint32_t pressTime){
                  tft.setTextSize(1);
                  tft.setCursor(40,55);
                  tft.println("CALIBRATION");
-                 tft.setCursor(40,75);
+                 tft.setCursor(40,70);
                  tft.println("COMPLETE");
                     tft.setCursor(40,85);
                     tft.print("Meas: ");
@@ -532,7 +532,9 @@ void loop() {
     
 
     // sleep control
-    updateSleepStatus(height, TFT_POWER_PIN);
+    if(calState == CAL_IDLE){
+        updateSleepStatus(height, TFT_POWER_PIN);
+    }
 
     
     delay(50);
