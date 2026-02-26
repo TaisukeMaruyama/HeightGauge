@@ -208,7 +208,7 @@ void calibrationMode(){
     tft.setCursor(40,60);
     tft.println("Press BTN");
     tft.setCursor(40,80);
-    tft.println("version 1.11");
+    tft.println("version 1.12");
 
     while (digitalRead(ButtonPin) == LOW);
     while (digitalRead(ButtonPin) == HIGH);
@@ -352,7 +352,10 @@ void redrawNoumalUI(){
     float height = updateHeight();
     updateHeightDisplay(tft,height,previousHeight);
     useCalibrationMode = false;
+    lastInteractionTime = millis();
 }
+
+
 
 void enterUserCalibration(){
     useCalibrationMode = true;
@@ -377,6 +380,7 @@ void enterUserCalibration(){
     tft.println("SET 5mm JIG");
     tft.setCursor(55,80);
     tft.println("PRESS BTN");
+    delay(3000);
 }
 void handleUserCalibration(bool buttonReleased,uint32_t pressTime){
     // Placeholder for user calibration handling if needed

@@ -7,4 +7,6 @@ void blinkLed(int ledPin);
 void ledOff();
 bool isSleeping();
 
+ extern unsigned long lastInteractionTime;
+
 #endif
